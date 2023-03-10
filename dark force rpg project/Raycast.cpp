@@ -68,6 +68,10 @@ void Raycast::castRay(float rayAngle, int stripID, Player& player, Map& map)
 
 	float nextHorzTouchX = xintercept;
 	float nextHorzTouchY = yintercept;
+	if (nextHorzTouchY == 0)
+	{
+		int i = 0;
+	}
 	float horzxstep = xstep;
 	float horzystep = ystep;
 	int hitcount = 0;
@@ -171,7 +175,7 @@ void Raycast::castRay(float rayAngle, int stripID, Player& player, Map& map)
 			info.mapY = (int)floor(nextVertTouchY / TILE_SIZE);
 			
 			info.height = map.getFromHeightMap((int)floor(yToCheck / TILE_SIZE), (int)floor(xToCheck / TILE_SIZE));
-
+			
 			//code for all textures related to each level of a height thats more then 1 level
 			for (int i = 1; i <= info.height; i++)
 			{
@@ -228,6 +232,11 @@ void Raycast::castRay(float rayAngle, int stripID, Player& player, Map& map)
 		intersectInfo info = rays[stripID].endlist[1];
 		rays[stripID].endlist[1] = rays[stripID].endlist[0];
 		rays[stripID].endlist[0] = info;
+		rays[stripID].listinfo.push_back(info);
+	}
+	else
+	{
+		intersectInfo info = rays[stripID].endlist[0];
 		rays[stripID].listinfo.push_back(info);
 	}
 }

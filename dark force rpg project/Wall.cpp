@@ -332,11 +332,21 @@ void Wall::renderWallProjection(olc::PixelGameEngine* PGEptr, Player& player, Ra
 				break;
 			}
 			}
-
+			if (x == 300)
+			{
+				PGEptr->Draw(x, y, olc::GREEN);
+				
+			}
 		}
-
-		PGEptr->DrawString(10, 50, "fLookUp  = " + std::to_string(player.lookupordown));
-		PGEptr->DrawString(10, 40, "fPlayerH = " + std::to_string(player.fPlayerH));
+		if (PGEptr->GetKey(olc::Y).bPressed)
+		{
+			for (int i = 0; i < rays.rays[x].listinfo.size(); i++)
+			{
+				
+			}
+		}
+		//PGEptr->DrawString(10, 50, "fLookUp  = " + std::to_string(player.lookupordown));
+		//PGEptr->DrawString(10, 40, "fPlayerH = " + std::to_string(player.fPlayerH));
 	}
 
 		

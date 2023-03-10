@@ -36,10 +36,10 @@ public:
 		ray.castAllRays(player, map);
 		
 		wall.renderWallProjection(this, player, ray);
-		//map.renderMapGrid(this);
-		//player.renderMapPlayer(this);
+		map.renderMapGrid(this);
+		player.renderMapPlayer(this);
 		
-		//ray.renderMapRays(this, player);
+		ray.renderMapRays(this, player);
 		return true;
 	}
 

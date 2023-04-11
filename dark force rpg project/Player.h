@@ -36,9 +36,9 @@ public:
 	float vertlook;
 	float strafeupspeed;
 	float fPlayerH;
+	bool movevert;
+	bool lookvert;
 };
-
-
 
 #endif // !PLAYER_H
 

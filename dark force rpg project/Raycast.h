@@ -1,9 +1,12 @@
 #ifndef RAYCAST_H
 #define RAYCAST_H
+
+#include <vector>
+
+#include "olcPixelGameEngine.h"
+
 #include "Player.h"
 #include "Map.h"
-#include <vector>
-#include "olcPixelGameEngine.h"
 
 struct intersectInfo
 {
@@ -22,12 +25,14 @@ struct intersectInfo
 	int bottom_front;
 	int ceil_front;
 	int ceil_back;
+
+	// for debugging purposes
+	bool rayUp, rayDn, rayLt, rayRt;
 };
 
 
 struct Ray {
 	std::vector<intersectInfo> listinfo;
-	std::vector<intersectInfo> endlist;
 };
 
 
@@ -37,11 +42,12 @@ public:
 	Raycast() = default;
 	void castAllRays(Player& player, Map& map);
 	void castRay(float rayAngle, int stripID, Player& player, Map& map);
-	void renderMapRays(olc::PixelGameEngine* PGEptr, Player& player);
+	void renderMapRays(olc::PixelGameEngine* PGEptr, Player& player, int testray); // Joseph21 - added testray for debugging
 
 public:
 	Ray rays[NUM_RAYS];
 };
+
 #endif // !RAYCAST_H
 
 

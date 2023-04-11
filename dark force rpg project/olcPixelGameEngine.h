@@ -979,6 +979,8 @@ namespace olc
 		pColData.clear();
 	}
 
+	
+
 	// To Be Deprecated
 	//olc::rcode Sprite::LoadFromPGESprFile(const std::string& sImageFile, olc::ResourcePack* pack)
 	//{
@@ -4865,6 +4867,7 @@ namespace olc {
 
 #include <emscripten/html5.h>
 #include <emscripten/key_codes.h>
+#include "Sprite.h"
 
 extern "C"
 {

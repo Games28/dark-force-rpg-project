@@ -23,48 +23,49 @@ Player::Player()
 	vertlook = 0;
 	strafeupspeed = 1.0f;
 	fPlayerH = 0.5f;
+	lookvert = false;
+	movevert = false;
 }
 
 Player::~Player()
 {
 }
 
-void Player::processInput(olc::PixelGameEngine* PGEptr,float deltatime,Map& map)
+void Player::processInput(olc::PixelGameEngine* PGEptr, float deltatime, Map& map)
 {
 
 	if (PGEptr->GetKey(olc::W).bHeld)
 	{
 		walkDirection = +1;
 	}
-	
+
 	if (PGEptr->GetKey(olc::S).bHeld)
 	{
 		walkDirection = -1;
 	}
-	
+
 	if (PGEptr->GetKey(olc::Q).bHeld)
 	{
 		strafeLeft = true;
 		strafedirection = +1;
-		
 	}
-	
+
 	if (PGEptr->GetKey(olc::E).bHeld)
 	{
 		strafeRight = true;
 		strafedirection = -1;
-		
 	}
-	
+
 	if (PGEptr->GetKey(olc::D).bHeld)
 	{
 		turnDirection = +1;
 	}
-	
+
 	if (PGEptr->GetKey(olc::A).bHeld)
 	{
 		turnDirection = -1;
 	}
+
 	if (PGEptr->GetKey(olc::SHIFT).bHeld)
 	{
 		run = 3;
@@ -72,10 +73,12 @@ void Player::processInput(olc::PixelGameEngine* PGEptr,float deltatime,Map& map)
 
 	if (PGEptr->GetKey(olc::UP).bHeld)
 	{
+		lookvert = true;
 		lookupordown += lookspeed * deltatime;
 	}
 	if (PGEptr->GetKey(olc::DOWN).bHeld)
 	{
+		lookvert = true;
 		lookupordown  -= lookspeed * deltatime;
 	}
 
@@ -91,16 +94,12 @@ void Player::processInput(olc::PixelGameEngine* PGEptr,float deltatime,Map& map)
 
 	if (PGEptr->GetKey(olc::Q).bReleased)
 	{
-		
 		strafedirection = 0;
-
 	}
 
 	if (PGEptr->GetKey(olc::E).bReleased)
 	{
-		
 		strafedirection = 0;
-
 	}
 
 	if (PGEptr->GetKey(olc::D).bReleased)
@@ -116,6 +115,16 @@ void Player::processInput(olc::PixelGameEngine* PGEptr,float deltatime,Map& map)
 	{
 		run = 1;
 	}
+	if (PGEptr->GetKey(olc::UP).bReleased)
+	{
+		lookvert = false;
+		
+	}
+	if (PGEptr->GetKey(olc::DOWN).bReleased)
+	{
+		lookvert = false;
+		
+	}
 
 	//NOTE - for multi level rendering there's only clamping to keep fPlayerH > 0.0f, there's no upper limit.
 
@@ -127,11 +136,13 @@ void Player::processInput(olc::PixelGameEngine* PGEptr,float deltatime,Map& map)
 		// if the player height is adapted, keep horizon height stable by compensating with look up value
 		if (PGEptr->GetKey(olc::PGUP).bHeld)
 		{
+			movevert = true;
 			fPlayerH += strafeupspeed * run * deltatime;
 			lookupordown = fCachHorHeight - float(WINDOW_HEIGHT * fPlayerH);
 		}
 		if (PGEptr->GetKey(olc::PGDN).bHeld)
 		{
+			movevert = true;
 			float fNewHeight = fPlayerH - strafeupspeed * run * deltatime;
 			if (fNewHeight > 0.0f && map.getFromHeightMap(int(x),int(y)) < fNewHeight)
 			{
@@ -145,6 +156,7 @@ void Player::processInput(olc::PixelGameEngine* PGEptr,float deltatime,Map& map)
 	{
 		if (PGEptr->GetKey(olc::PGUP).bHeld)
 		{
+			movevert = true;
 			float fNewHeight = fPlayerH + strafeupspeed * run * deltatime;
 			if (fNewHeight < 1.0f)
 			{
@@ -154,6 +166,7 @@ void Player::processInput(olc::PixelGameEngine* PGEptr,float deltatime,Map& map)
 		}
 		if (PGEptr->GetKey(olc::PGDN).bHeld)
 		{
+			movevert = true;
 			float fNewHeight = fPlayerH - strafeupspeed * run * deltatime;
 			if (fNewHeight > 0.0f)
 			{
@@ -163,8 +176,20 @@ void Player::processInput(olc::PixelGameEngine* PGEptr,float deltatime,Map& map)
 		}
 	}
 
-	if (PGEptr->GetKey(olc::R).bReleased) { fPlayerH = 0.5f; lookupordown = 0.0f; }
+	if(PGEptr->GetKey(olc::PGUP).bReleased)
+	{
+		movevert = false;
+		
+	}
+	if (PGEptr->GetKey(olc::PGDN).bReleased)
+	{
+		movevert = false;
+		
+	}
 
+
+	// reset height and lookup factor upon pressing R
+	if (PGEptr->GetKey(olc::R).bReleased) { fPlayerH = 0.5f; lookupordown = 0.0f; }
 }
 
 void Player::movePlayer(float deltatime, Map& map)
@@ -207,21 +232,13 @@ void Player::movePlayer(float deltatime, Map& map)
 		strafePlayerY = y - cos(rotationAngle) * strafeStep;
 	}
 
-
-
 	if (!map.mapHasWallAt(strafePlayerX, strafePlayerY))
 	{
 		x = strafePlayerX;
 		y = strafePlayerY;
 	}
 
-
 	//look up and look down cod
-	
-	
-
-
-
 }
 
 void Player::renderMapPlayer(olc::PixelGameEngine* PGEptr)

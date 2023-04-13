@@ -1,197 +1,136 @@
 #include "Sprite.h"
 
-void Sprite::initSpriteinfo()
+void Sprite::initSprites(float screenwidth)
 {
-	sprites[0] = {640,630, 0};
-	sprites[1] = { 660,690,1 };
-	sprites[2] = { 250,600, 1 };
-	sprites[3] = { 240,610, 2 };
-	sprites[4] = { 300,400, 2 };
-}
+	fDepthBuffer = new float[screenwidth];
+	spritelamp = new olc::Sprite("trooper.png");
 
-void Sprite::initsprites()
-{
-	spriteptr[0] = new olc::Sprite("probidletest.png");
-	spriteptr[1] = new olc::Sprite("r2idletest.png");
-	spriteptr[2] = new olc::Sprite("trooper.png");
-
-
-}
-
-void Sprite::calculateBottomandTop(Player& player, float distance,float& SHeight,float& SWidth, int halfheight, float& ceiling, float& floor)
-{
-	int sliceHeight = ((TILE_SIZE / distance) * DIST_TO_PROJ_PLANE);
-	ceiling = halfheight - (sliceHeight *  player.fPlayerH) * sliceHeight;
-	floor = halfheight + (sliceHeight * player.fPlayerH);
-
-}
-
-void Sprite::SpriteProjection(olc::PixelGameEngine* PGEptr, Raycast& rays, Player& player)
-{
-	
-	int halfscreenheight = WINDOW_HEIGHT * player.fPlayerH;
-	
-	auto normalizeAngle = [=](float* angle)
-	{
-		*angle = remainder(*angle, TWO_PI);
-		if (*angle < 0) {
-			*angle = TWO_PI + *angle;
-		}
+	listObjects = {
+		{ 8.5f, 8.5f, 0.0f, 0.0f, false, spritelamp },
+			{ 7.5f, 7.5f, 0.0f, 0.0f, false, spritelamp },
+			{ 10.5f, 3.5f, 0.0f, 0.0f, false, spritelamp },
 	};
+}
 
-	auto distanceBetweenPoints = [=](float x1, float y1, float x2, float y2)
+void Sprite::DrawSprites(olc::PixelGameEngine* gfx,int x, float fdisttowall,Player& player, Map& map, float deltatime)
+{
+	fDepthBuffer[x] = fdisttowall;
+	for (auto object : listObjects)
 	{
-		return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-	};
-	sprite_t visibleSprites[NUM_SPRITES];
-	int numVisibleSprites = 0;
+		object.x += object.vx * deltatime;
+		object.y += object.vy * deltatime;
 
-	for (int i = 0; i < NUM_SPRITES; i++)
-	{
+		// Check if object is inside wall - set flag for removal
+		if (map.sMap[(int)object.x * map.nMapX + (int)object.y] == '#')
+			object.bRemove = true;
 
-		float angleSpritePlayer = player.rotationAngle - atan2(sprites[i].y - player.y, sprites[i].x - player.x);
+		float fVecX = object.x - player.fPlayerX;
+		float fVecY = object.y - player.fPlayerY;
+		float fDistanceFromPlayer = sqrtf(fVecX * fVecX + fVecY * fVecY);
 
-		if (angleSpritePlayer > PI)
-			angleSpritePlayer -= TWO_PI;
-		if (angleSpritePlayer < -PI)
-			angleSpritePlayer += TWO_PI;
+		float fEyeX = sinf(player.fPlayerA_deg);
+		float fEyeY = sinf(player.fPlayerA_deg);
+		float fObjectAngle = atan2f(fEyeY, fEyeX) - atan2f(fEyeY, fEyeX);
+		if (fObjectAngle < -3.14159f)
+			fObjectAngle += 2.0f * 3.14159f;
 
-		angleSpritePlayer = fabs(angleSpritePlayer);
+		if (fObjectAngle > 3.14159f)
+			fObjectAngle -= 2.0f * 3.14159f;
 
-		const float ESPSILON = 0.2f;
+		bool bInPlayerFOV = fabs(fObjectAngle) < player.fPlayerFoV_deg / 2.0f;
 
-		const float EPSILON = 0.2f;
-		if (angleSpritePlayer < (FOV_ANGLE / 2) + EPSILON) {
-			sprites[i].visible = true;
-			sprites[i].angle = angleSpritePlayer;
-			sprites[i].distance = distanceBetweenPoints(sprites[i].x, sprites[i].y, player.x, player.y);
-			visibleSprites[numVisibleSprites] = sprites[i];
-			numVisibleSprites++;
-		}
-		else {
-			sprites[i].visible = false;
-		}
-	}
-
-	for (int i = 0; i < numVisibleSprites - 1; i++)
-	{
-		for (int j = i + 1; j < numVisibleSprites; j++)
+		if (bInPlayerFOV && fDistanceFromPlayer >= 0.50f && fDistanceFromPlayer < fdisttowall)
 		{
-			if (visibleSprites[i].distance < visibleSprites[j].distance)
+			float fObjectCeiling = (float)(gfx->ScreenHeight() / 2.0f) - gfx->ScreenHeight() / ((float)fDistanceFromPlayer);
+			float fObjectFloor = gfx->ScreenHeight() - fObjectCeiling;
+			float fObjectHeight = fObjectFloor - fObjectCeiling;
+			float fObjectAspectRatio = (float)object.sprite->height / (float)object.sprite->width;
+			float fObjectWidth = fObjectHeight / fObjectAspectRatio;
+			float fMiddleOfObject = (0.5f * (fObjectAngle / (player.fPlayerFoV_deg / 2.0f)) + 0.50f) * (float)gfx->ScreenWidth();
+			for (float lx = 0; lx < fObjectWidth; lx++)
 			{
-				sprite_t temp = visibleSprites[i];
-				visibleSprites[i] = visibleSprites[j];
-				visibleSprites[j] = temp;
-			}
-		}
-	}
-
-	for (int i = 0; i < numVisibleSprites; i++)
-	{
-		sprite_t sprite = visibleSprites[i];
-
-		float prepDistance = sprite.distance * cos(sprite.angle);
-		
-		float spriteHeight = (TILE_SIZE / prepDistance) * DIST_TO_PROJ_PLANE;
-		
-		float spriteWidth = spriteHeight;
-		
-
-		float spriteTopY = (WINDOW_HEIGHT / 2)-(spriteHeight / 2);
-		spriteTopY = (spriteTopY < 0) ? 0 : spriteTopY;
-		
-		float spriteBottomY = (WINDOW_HEIGHT / 2) + (spriteHeight / 2);
-		spriteBottomY = (spriteBottomY > WINDOW_HEIGHT) ? WINDOW_HEIGHT : spriteBottomY;
-		
-		if (player.lookvert)
-		{
-			vertlook = player.lookupordown;
-		
-		}
-		if(player.movevert)
-		{
-			vertlook = -player.lookupordown;
-		}
-		
-		spriteTopY += vertlook;
-		spriteBottomY += vertlook;
-		
-		
-		
-		float spriteAngle = atan2(sprite.y - player.y, sprite.x - player.x) - player.rotationAngle;
-		float spriteScreenPosX = tan(spriteAngle) * DIST_TO_PROJ_PLANE;
-
-		float spriteLeftX = (WINDOW_WIDTH / 2) + spriteScreenPosX - spriteWidth / 2;
-		float spriteRightX = spriteLeftX + spriteWidth;
-
-		int textureWidth = spriteptr[sprite.texture]->width;
-		int textureHeight = spriteptr[sprite.texture]->height;
-
-		for (int x = spriteLeftX; x < spriteRightX; x++)
-		{
-
-			float texelWidth = (textureWidth / spriteWidth);
-			int textureOffSetX = (x - spriteLeftX) * texelWidth;
-			
-			for (int y = spriteTopY; y < spriteBottomY; y++)
-			{
-				
-				if (player.lookvert)
+				for (float ly = 0; ly < fObjectHeight; ly++)
 				{
-					vertposition = -player.lookupordown;
-				}
-				if (player.movevert)
-				{
-					vertposition = player.lookupordown;
-				}
-				
-					int distanceFromTop = (y + vertposition) + (spriteHeight / 2) - (WINDOW_HEIGHT / 2) ;
-					int textureOffSetY = distanceFromTop * (textureHeight / spriteHeight);
-			
-				
-		
-				
-					
-				
-				
-
-				if (x > 0 && x < WINDOW_WIDTH && y > 0 && y < WINDOW_HEIGHT)
-				{
-					olc::Pixel p = spriteptr[sprite.texture]->GetPixel(textureOffSetX, textureOffSetY);
-					if (sprite.distance < rays.rays[x].listinfo[0].distance)
+					float fSampleX = lx / fObjectWidth;
+					float fSampleY = ly / fObjectHeight;
+					olc::Pixel p = object.sprite->Sample(fSampleX, fSampleY);
+					int nObjectColumn = (int)(fMiddleOfObject + lx - (fObjectWidth / 2.0f));
+					if (nObjectColumn >= 0 && nObjectColumn < gfx->ScreenWidth())
 					{
-						if (p != olc::MAGENTA)
+						if (fDepthBuffer[nObjectColumn] >= fDistanceFromPlayer)
 						{
-							PGEptr->Draw(x, y, p);
+							gfx->Draw(nObjectColumn, nObjectColumn + ly, p);
+							fDepthBuffer[nObjectColumn] = fDistanceFromPlayer;
 						}
 					}
-				
 				}
-				
 			}
-			
-			
 		}
-
-	
-		
+		listObjects.remove_if([](Object& o) {return o.bRemove; });
 	}
-	
 	
 }
 
-void Sprite::mapSprites(olc::PixelGameEngine* PGEptr)
-{
-	for (int i = 0; i < NUM_SPRITES; i++)
-	{
-		for (int i = 0; i < NUM_SPRITES; i++) {
-			PGEptr->FillRect(
-				sprites[i].x * MINIMAP_SCALE_FACTOR,
-				sprites[i].y * MINIMAP_SCALE_FACTOR,
-				2,
-				2,
-				(sprites[i].visible) ? 0xFF00FFFF : 0xFF444444
-			);
-		}
-	}
-}
+//void Object::Walk(const float fWalkSpeed)
+//{
+//	fSpeed = fWalkSpeed;
+//	vel = olc::vf2d(std::cos(fHeading), std::sin(fHeading)) * fSpeed;
+//}
+//
+//void Object::Strafe(const float fStrafeSpeed)
+//{
+//	fSpeed = fStrafeSpeed;
+//	vel = olc::vf2d(std::cos(fHeading), std::sin(fHeading)).perp() * fSpeed;
+//}
+//
+//void Object::Turn(const float fTurnSpeed)
+//{
+//	fHeading += fTurnSpeed;
+//
+//	// Wrap heading to sensible angle
+//	if (fHeading < -3.14159f) fHeading += 2.0f * 3.14159f;
+//	if (fHeading > 3.14159f) fHeading -= 2.0f * 3.14159f;
+//}
+//
+//void Object::Stop()
+//{
+//	fSpeed = 0;
+//	vel = { 0,0 };
+//}
+//
+//void Sprite::Init()
+//{
+//
+//}
+//
+//void Sprite::drawSprite(olc::PixelGameEngine* gfx,Player& player)
+//{
+//	auto DepthDraw = [&](int x, int y, float z, olc::Pixel p)
+//	{
+//		if (z <= pDepthBuffer[y * gfx->ScreenWidth() + x])
+//		{
+//			gfx->Draw(x, y, p);
+//			pDepthBuffer[y * gfx->ScreenWidth() + x] = z;
+//		}
+//	};
+//
+//	for (const auto& ob : mapObjects)
+//	{
+//		const std::shared_ptr<Object> object = ob.second;
+//
+//		if (!object->bVisible) continue;
+//
+//		olc::vf2d vCameraPos = { player.fPlayerX, player.fPlayerY };
+//		olc::vf2d vObject = object->pos - vCameraPos;
+//
+//		float fDistanceToObject = vObject.mag();
+//
+//		float fObjectAngle = atan2f(vObject.y, vObject.x) - player.fPlayerFoV_deg;
+//		if (fObjectAngle < -3.14159f) fObjectAngle += 2.0f * 3.14159f;
+//		if (fObjectAngle > 3.14159f) fObjectAngle -= 2.0f * 3.14159f;
+//
+//		
+//
+//	}
+//
+//}

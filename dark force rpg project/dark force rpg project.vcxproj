@@ -139,26 +139,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="defs.h" />
     <ClInclude Include="Map.h" />
-    <ClInclude Include="MapEditor.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="Player.h" />
-    <ClInclude Include="Powers.h" />
-    <ClInclude Include="Raycast.h" />
-    <ClInclude Include="Saber.h" />
     <ClInclude Include="Sprite.h" />
-    <ClInclude Include="Wall.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Map.cpp" />
     <ClCompile Include="Player.cpp" />
-    <ClCompile Include="Powers.cpp" />
-    <ClCompile Include="Raycast.cpp" />
-    <ClCompile Include="Saber.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Sprite.cpp" />
-    <ClCompile Include="Wall.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -7,7 +7,7 @@ struct Player
 {
 
     float fPlayerX = 4.0f;
-    float fPlayerY = 7.0f;
+    float fPlayerY = 4.0f;
     float fPlayerA_deg = 0.0f;      // looking angle is in degrees
 
     // player: height of eye point and field of view

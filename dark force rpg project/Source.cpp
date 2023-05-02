@@ -11,6 +11,8 @@
 #include "Saber.h"
 #include "Powers.h"
 #include "RC_Map.h"
+#include "MapLayout.h"
+
 
 enum GameState
 {
@@ -36,12 +38,12 @@ public:
     Powers power;
     bool bMouseControl = MOUSE_CONTROL;
     GameState gamestate = GameState::GAME;
-    
+    RC_Map cMap;
     
     // max visible distance - use length of map diagonal to overlook whole map
     int nMapX = 32;
     int nMapY = 32;
-    float fMaxDistance = sqrt(nMapX * nMapX + nMapY * nMapY);
+    float fMaxDistance;
     bool isHit = false;
     float beforeRotate = 0.0f;
     float afterRotate = 0.0f;
@@ -70,9 +72,16 @@ public:
         
         //init_lu_sin_array();
         //init_lu_cos_array();
-            map.initMap();
+           // map.initMap();
+        //cMap.InitMap(32,32,smap);
+        cMap.InitMap(16, 16);
+        cMap.AddLayer(sMap_level0);
+        cMap.AddLayer(sMap_level1);
+       cMap.AddLayer(sMap_level2);
+        cMap.AddLayer(sMap_level3);
+        fMaxDistance = cMap.DiagonalLength();
             
-            ray.Init(bSuccess);
+            ray.Init(bSuccess,cMap);
             sprite.initSprites(ScreenWidth(),ScreenHeight());
             saber.initSaber();
         
@@ -154,10 +163,9 @@ public:
             if (GetKey(olc::E).bHeld) { fNewX -= sin(fPlayerA_rad) * SPEED_STRAFE * fElapsedTime; fNewY += cos(fPlayerA_rad) * SPEED_STRAFE * fElapsedTime; }   // strafe right
             // collision detection - check if out of bounds or inside non-empty tile
             // only update position if no collision
-            if (fNewX >= 0 && fNewX < nMapX &&
-                fNewY >= 0 && fNewY < nMapY &&
+            if (cMap.IsInBounds(fNewX, fNewY) &&
                 // collision detection criterion - is players height > height of map?
-                float(map.fMap[int(fNewY) * nMapX + int(fNewX)]) < player.fPlayerH) {
+                cMap.CellHeight(int(fNewX), int(fNewY)) < player.fPlayerH) {
                 player.fPlayerX = fNewX;
                 player.fPlayerY = fNewY;
             }
@@ -191,7 +199,7 @@ public:
                 if (GetKey(olc::PGDN).bHeld) {
                     float fNewHeight = player.fPlayerH - SPEED_STRAFE_UP * fSpeedUp * fElapsedTime;
                     // prevent negative height, and do CD on the height map
-                    if (fNewHeight > 0.0f && float(map.fMap[int(player.fPlayerY) * nMapX + int(player.fPlayerX)]) < fNewHeight) {
+                    if (fNewHeight > 0.0f && cMap.CellHeight(int(player.fPlayerX), int(player.fPlayerY)) < fNewHeight) {
                         player.fPlayerH = fNewHeight;
                         player.fLookUp = fCacheHorHeight - float(ScreenHeight() * player.fPlayerH);
                     }
@@ -236,7 +244,7 @@ public:
 
             Clear(RENDER_CEILING ? olc::BLACK : olc::CYAN);
 
-            ray.raycasting(*this, player, map, sprite);
+            ray.raycasting(*this, player, cMap, sprite);
 
 
             //sprite.DrawSprites(this, player, map, fElapsedTime);
@@ -260,7 +268,7 @@ public:
                     obj.ishit = power.isinSight(obj, player, 3.0f * (3.14159f / 180.0f), fObjPlyA);
                     if (obj.ishit)
                     {
-                        sprite.Drawtest(this, icon, player, map, fElapsedTime);
+                        sprite.Drawtest(this, icon, player, cMap, fElapsedTime);
                     }
                 }
                 
@@ -282,7 +290,7 @@ public:
                 
                
                 if (GetKey(olc::SPACE).bReleased) obj.pickedup = false;
-                sprite.Drawtest(this,obj,player,map,fElapsedTime);
+                sprite.Drawtest(this,obj,player,cMap,fElapsedTime);
                 
                 
             }

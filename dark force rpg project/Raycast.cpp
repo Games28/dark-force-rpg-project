@@ -2,9 +2,10 @@
 
 
 
-bool Raycast::Init(bool& bSuccess)
+bool Raycast::Init(bool& bSuccess, RC_Map& cmap)
 {
     wallsprite.init(bSuccess);
+    fMaxDistance = cmap.DiagonalLength();
     return bSuccess;
 }
 
@@ -16,7 +17,7 @@ void Raycast::constrols(olc::PixelGameEngine& pge, float& fElapsedTime)
     if (pge.GetKey(olc::END).bHeld) fIntensityMultiplier -= INTENSITY_SPEED * fElapsedTime;
 }
 
-bool Raycast::GetDistancesToWalls(float fRayAngle, std::vector<IntersectInfo>& vHitList,Map& map, Player& player)
+bool Raycast::GetDistancesToWalls(float fRayAngle, std::vector<IntersectInfo>& vHitList,RC_Map& map, Player& player)
 {
     // The player's position is the "from point"
     float fFromX = player.fPlayerX;
@@ -61,8 +62,7 @@ bool Raycast::GetDistancesToWalls(float fRayAngle, std::vector<IntersectInfo>& v
     }
 
     // check whether analysis got out of map boundaries
-    bool bOutOfBounds = (nCurX < 0 || nCurX >= nMapX ||
-        nCurY < 0 || nCurY >= nMapY);
+    bool bOutOfBounds = !map.IsInBounds(nCurX, nCurY);
     // did analysis reach the destination cell?
     bool bDestCellFound = (nCurX == int(fToX) && nCurY == int(fToY));
 
@@ -85,8 +85,7 @@ bool Raycast::GetDistancesToWalls(float fRayAngle, std::vector<IntersectInfo>& v
             fLengthPartialRayY += fSY;
         }
 
-        bOutOfBounds = (nCurX < 0 || nCurX >= nMapX ||
-            nCurY < 0 || nCurY >= nMapY);
+        bOutOfBounds = !map.IsInBounds(nCurX, nCurY);
         if (bOutOfBounds) {
             bDestCellFound = false;
 
@@ -109,13 +108,13 @@ bool Raycast::GetDistancesToWalls(float fRayAngle, std::vector<IntersectInfo>& v
         }
         else {
             // check if there's a difference in height found
-            bool bHitFound = (map.fMap[nCurY * nMapX + nCurX] != fCurHeight);
+            bool bHitFound = (map.CellHeight(nCurX, nCurY) != fCurHeight);
             bDestCellFound = (nCurX == int(fToX) && nCurY == int(fToY));
 
             if (bHitFound) {
 
                 // reset current height to new value
-                fCurHeight = map.fMap[nCurY * nMapX + nCurX];
+                fCurHeight = map.CellHeight(nCurX, nCurY);
 
                 // put the collision info in a new IntersectInfo node and push it up the hit list
                 IntersectInfo sInfo;
@@ -140,7 +139,7 @@ void Raycast::CalculateWallBottomAndTop(float fCorrectedDistToWall, int nHorHeig
     nWallBottom = nHorHeight + (nSliceHeight * player.fPlayerH);
 }
 
-void Raycast::raycasting(olc::PixelGameEngine& pge, Player& player, Map& map, Sprite& sprite)
+void Raycast::raycasting(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sprite& sprite)
 {
    
     fDistToProjPlane = ((pge.ScreenWidth() / 2.0f) / sin((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f)) * cos((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f);

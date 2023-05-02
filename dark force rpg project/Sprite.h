@@ -5,6 +5,7 @@
 #include "Player.h"
 
 #include "Map.h"
+#include "RC_Map.h"
 
 #include <unordered_map>
 #include <algorithm>
@@ -32,7 +33,7 @@ public:
 	void initSprites(int screenwidth, int screenheight);
 	void DrawSprites(olc::PixelGameEngine* gfx, Player& player, Map& map, float deltatime, olc::Pixel maskColour = olc::MAGENTA);
 	void DrawIcon(olc::PixelGameEngine* gfx, Player& player, Map& map, float deltatime, olc::Pixel maskColour = olc::MAGENTA);
-	void Drawtest(olc::PixelGameEngine* gfx, Object& object, Player& player, Map& map, float deltatime, olc::Pixel maskColour = olc::MAGENTA);
+	void Drawtest(olc::PixelGameEngine* gfx, Object& object, Player& player, RC_Map& map, float deltatime, olc::Pixel maskColour = olc::MAGENTA);
 	void DrawDepth(olc::PixelGameEngine& pge, float fDepth, int x, int y, olc::Pixel col);
 	//void newDraw();
 

@@ -251,7 +251,7 @@ void Sprite::DrawIcon(olc::PixelGameEngine* gfx, Player& player, Map& map, float
 	}
 }
 
-void Sprite::Drawtest(olc::PixelGameEngine* gfx,Object& object, Player& player, Map& map, float deltatime, olc::Pixel maskColour)
+void Sprite::Drawtest(olc::PixelGameEngine* gfx,Object& object, Player& player, RC_Map& map, float deltatime, olc::Pixel maskColour)
 {
 	int nHalfScreenWidth = gfx->ScreenWidth() / 2;
 	int nHorizonHeight = gfx->ScreenHeight() * player.fPlayerH + (int)player.fLookUp;
@@ -261,10 +261,8 @@ void Sprite::Drawtest(olc::PixelGameEngine* gfx,Object& object, Player& player, 
 		
 
 		// Check if object is inside wall - set flag for removal
-		if (map.sMap[(int)object.x * nMapX + (int)object.y] != '.') {
-			object.bRemove = true;
-		}
-		else if (object.x < 0 || object.x >= nMapX || object.y < 0 || object.y >= nMapY)
+		
+		if (object.x < 0 || object.x >= map.Width() || object.y < 0 || object.y >= map.Height())
 		{
 			object.bRemove = true;
 		}

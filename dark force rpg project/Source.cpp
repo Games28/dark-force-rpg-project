@@ -70,8 +70,8 @@ public:
     bool OnUserCreate() override {
         bool bSuccess = true;
         
-        //ray.init_lu_sin_array();
-        //ray.init_lu_cos_array();
+        ray.init_lu_sin_array();
+        ray.init_lu_cos_array();
            
         cMap.InitMap(16, 16);
         cMap.AddLayer(sMap_level0);

@@ -2,41 +2,44 @@
 
 void Saber::initSaber()
 {
-	sprites[0] = new olc::Sprite("dualdarksaberinnerglow.png");
-	sprites[1] = new olc::Sprite("dualdarksaberouterglow.png");
-	sprites[2] = new olc::Sprite("lightsabermiddleglow.png");
+	sprites[0] = new olc::Sprite("layeredduallightsaberinner.png");
+	sprites[1] = new olc::Sprite("layeredduallightsaberouter1.png");
+	sprites[2] = new olc::Sprite("layeredduallightsaberouter2.png");
+	sprites[3] = new olc::Sprite("layeredduallightsaberouter3.png");
+	sprites[4] = new olc::Sprite("layeredduallightsaberouter4.png");
 	//sprites[1] = new olc::Sprite("testsaber.png");
 	decals[0] = new olc::Decal(sprites[0]);
 	decals[1] = new olc::Decal(sprites[1]);
 	decals[2] = new olc::Decal(sprites[2]);
+	decals[3] = new olc::Decal(sprites[3]);
+	decals[4] = new olc::Decal(sprites[4]);
+
+	
 }
 
 void Saber::DrawSaber(olc::PixelGameEngine* gfx)
 {
-	if (light < 0.80f)
-	{
-		lightswitch = true;
-	}
+	int random = 0;
 
 
 	if (light >= 1.0f)
 	{
-		lightswitch = false;
-	}
-
-	if (lightswitch)
-	{
-		light += 0.005f;
+		lightswitch = true;
+		light = 0.70f;
+		random = rand() % 3;
 	}
 	else
 	{
-		light -= 0.005f;
+		lightswitch = false;
+
 	}
+	light += 0.5f;
+
 
 
 	if (gfx->GetKey(olc::B).bPressed)
 	{
-		p = olc::BLUE;
+		p = olc::DARK_CYAN;
 	}
 	if (gfx->GetKey(olc::R).bPressed)
 	{
@@ -67,13 +70,26 @@ void Saber::DrawSaber(olc::PixelGameEngine* gfx)
 	{
 		Pos.x += 1;
 	}
-	//gfx->SetDecalMode(olc::DecalMode::ADDITIVE);
-	olc::vf2d size{ 0.45f,0.45f };
-	//gfx->DrawDecal({ Pos.x,Pos.y }, decals[1], { 0.90f,0.90f }, p * light);
-	//gfx->DrawDecal({ Pos.x,Pos.y }, decals[2], { 0.90f,0.90f }, p );
-	gfx->SetDecalMode(olc::DecalMode::ADDITIVE);
-	gfx->DrawDecal({ Pos.x,Pos.y }, decals[1], size, darkouter * light);
+
+	olc::vf2d size{ 0.40f,0.40f };
 	gfx->SetDecalMode(olc::DecalMode::NORMAL);
-	gfx->DrawDecal({ Pos.x,Pos.y }, decals[1], size, darkouter * light);
-	gfx->DrawDecal({ Pos.x,Pos.y }, decals[0], size, darkinner);
+	gfx->DrawDecal({ Pos.x,Pos.y }, decals[0], size, olc::WHITE);
+	gfx->SetDecalMode(olc::DecalMode::ADDITIVE);
+
+	switch (random)
+	{
+	case 0:
+		gfx->DrawDecal({ Pos.x,Pos.y }, decals[1], size, p);
+		break;
+	case 1:
+		gfx->DrawDecal({ Pos.x,Pos.y }, decals[2], size, p);
+		break;
+	case 2:
+		gfx->DrawDecal({ Pos.x,Pos.y }, decals[3], size, p);
+		break;
+	case 3:
+		gfx->DrawDecal({ Pos.x,Pos.y }, decals[4], size, p);
+		break;
+	}
+
 }

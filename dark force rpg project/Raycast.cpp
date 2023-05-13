@@ -411,10 +411,10 @@ bool Raycast::GetDistancesToWallsPerLevel(int level, float fRayAngle, std::vecto
     float fFromX = player.fPlayerX;
     float fFromY = player.fPlayerY;
     // Calculate the "to point" using the player's angle and fMaxDistance
-    //float fToX = player.fPlayerX + fMaxDistance * lu_cos(fRayAngle);
-   // float fToY = player.fPlayerY + fMaxDistance * lu_sin(fRayAngle);
-   float fToX = player.fPlayerX + fMaxDistance * cos(fRayAngle * PI / 180.0f);
-    float fToY = player.fPlayerY + fMaxDistance * sin(fRayAngle * PI / 180.0f);
+    float fToX = player.fPlayerX + fMaxDistance * lu_cos(fRayAngle);
+   float fToY = player.fPlayerY + fMaxDistance * lu_sin(fRayAngle);
+  // float fToX = player.fPlayerX + fMaxDistance * cos(fRayAngle * PI / 180.0f);
+    //float fToY = player.fPlayerY + fMaxDistance * sin(fRayAngle * PI / 180.0f);
     // work out normalized direction vector (fDX, fDY)
     float fDX = fToX - fFromX;
     float fDY = fToY - fFromY;
@@ -552,14 +552,14 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         auto get_ceil_sample = [=](int px, int py, float fHeight) -> olc::Pixel {
             // work out the distance to the location on the ceiling you are looking at through this pixel
             // (the pixel is given since you know the x and y screen coordinate to draw to)
-            //float fCeilProjDistance = (((1.0f - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            float fCeilProjDistance = (((1.0f - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / lu_cos(fViewAngle);
             // calculate the world ceiling coordinate from the player's position, the distance and the view angle + player angle
-            //float fCeilProjX = player.fPlayerX + fCeilProjDistance * lu_cos(fCurAngle);
-            //float fCeilProjY = player.fPlayerY + fCeilProjDistance * lu_sin(fCurAngle);
-            float fCeilProjDistance = (((1.0f - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            float fCeilProjX = player.fPlayerX + fCeilProjDistance * lu_cos(fCurAngle);
+            float fCeilProjY = player.fPlayerY + fCeilProjDistance * lu_sin(fCurAngle);
+            //float fCeilProjDistance = (((1.0f - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
             // calculate the world ceiling coordinate from the player's position, the distance and the view angle + player angle
-            float fCeilProjX = player.fPlayerX + fCeilProjDistance * cos(fCurAngle * PI / 180.0f);
-            float fCeilProjY = player.fPlayerY + fCeilProjDistance * sin(fCurAngle * PI / 180.0f);
+            //float fCeilProjX = player.fPlayerX + fCeilProjDistance * cos(fCurAngle * PI / 180.0f);
+            //float fCeilProjY = player.fPlayerY + fCeilProjDistance * sin(fCurAngle * PI / 180.0f);
             // calculate the sample coordinates for that world ceiling coordinate, by subtracting the
             // integer part and only keeping the fractional part. Wrap around if the result < 0
             float fSampleX = fCeilProjX - int(fCeilProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
@@ -572,13 +572,13 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         auto get_floor_sample = [=](int px, int py) -> olc::Pixel {
             // work out the distance to the location on the floor you are looking at through this pixel
             // (the pixel is given since you know the x and y to draw to)
-            //float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle);
-            float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            //float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
             // calculate the world floor coordinate from the distance and the view angle + player angle
-            //float fFloorProjX = player.fPlayerX + fFloorProjDistance * lu_cos(fCurAngle);
-            //float fFloorProjY = player.fPlayerY + fFloorProjDistance * lu_sin(fCurAngle);
-            float fFloorProjX = player.fPlayerX + fFloorProjDistance * cos(fCurAngle * PI / 180.0f);
-            float fFloorProjY = player.fPlayerY + fFloorProjDistance * sin(fCurAngle * PI / 180.0f);
+            float fFloorProjX = player.fPlayerX + fFloorProjDistance * lu_cos(fCurAngle);
+            float fFloorProjY = player.fPlayerY + fFloorProjDistance * lu_sin(fCurAngle);
+            //float fFloorProjX = player.fPlayerX + fFloorProjDistance * cos(fCurAngle * PI / 180.0f);
+            //float fFloorProjY = player.fPlayerY + fFloorProjDistance * sin(fCurAngle * PI / 180.0f);
             // calculate the sample coordinates for that world floor coordinate, by subtracting the
             // integer part and only keeping the fractional part. Wrap around if the result < 0
             float fSampleX = fFloorProjX - int(fFloorProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
@@ -591,13 +591,13 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         auto get_roof_sample = [=](int px, int py, float fHeight) -> olc::Pixel {
             // work out the distance to the location on the roof you are looking at through this pixel
             // (the pixel is given since you know the x and y to draw to)
-            //float fRoofProjDistance = (((player.fPlayerH - fHeight) / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle);
-            float fRoofProjDistance = (((player.fPlayerH - fHeight) / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            float fRoofProjDistance = (((player.fPlayerH - fHeight) / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            //float fRoofProjDistance = (((player.fPlayerH - fHeight) / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
             // calculate the world floor coordinate from the distance and the view angle + player angle
-            //float fRoofProjX = player.fPlayerX + fRoofProjDistance * lu_cos(fCurAngle);
-            //float fRoofProjY = player.fPlayerY + fRoofProjDistance * lu_sin(fCurAngle);
-            float fRoofProjX = player.fPlayerX + fRoofProjDistance * cos(fCurAngle * PI / 180.0f);
-            float fRoofProjY = player.fPlayerY + fRoofProjDistance * sin(fCurAngle * PI / 180.0f);
+            float fRoofProjX = player.fPlayerX + fRoofProjDistance * lu_cos(fCurAngle);
+            float fRoofProjY = player.fPlayerY + fRoofProjDistance * lu_sin(fCurAngle);
+            //float fRoofProjX = player.fPlayerX + fRoofProjDistance * cos(fCurAngle * PI / 180.0f);
+            //float fRoofProjY = player.fPlayerY + fRoofProjDistance * sin(fCurAngle * PI / 180.0f);
             // calculate the sample coordinates for that world floor coordinate, by subtracting the
             // integer part and only keeping the fractional part. Wrap around if the result < 0
             float fSampleX = fRoofProjX - int(fRoofProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
@@ -621,8 +621,8 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
 
             for (int i = 0; i < (int)vCurLevelList.size(); i++) {
                 // make correction for the fish eye effect
-                //vCurLevelList[i].fDistFrnt *= lu_cos(fViewAngle);
-                vCurLevelList[i].fDistFrnt *= cos(fViewAngle * PI / 180.0f);
+                vCurLevelList[i].fDistFrnt *= lu_cos(fViewAngle);
+                //vCurLevelList[i].fDistFrnt *= cos(fViewAngle * PI / 180.0f);
                 // calculate values for the on screen projections top_front and top_bottom
                 CalculateWallBottomAndTop2(
                     vCurLevelList[i].fDistFrnt,

@@ -70,10 +70,9 @@ public:
     bool OnUserCreate() override {
         bool bSuccess = true;
         
-        //init_lu_sin_array();
-        //init_lu_cos_array();
-           // map.initMap();
-        //cMap.InitMap(32,32,smap);
+        //ray.init_lu_sin_array();
+        //ray.init_lu_cos_array();
+           
         cMap.InitMap(16, 16);
         cMap.AddLayer(sMap_level0);
         cMap.AddLayer(sMap_level1);
@@ -92,20 +91,7 @@ public:
         return bSuccess;
     }
 
-    // adaptation of the DDA function to support a list of intersections (instead of just the first one)
-    // as well as the info needed to render roofs (top faces of walls)
-
-        // Holds intersection point in float (world) coordinates and in int (tile) coordinates,
-        // the distance to the intersection point and the height of the map at these tile coordinates
    
-
-    // Implementation of the DDA algorithm. This function uses class variables for the description of the map.
-    // The players position is the "from point", a "to point" is determined using fRayAngle and fMaxDistance.
-    // A ray is cast from the "from point" to the "to point". If there is a collision (intersection with a
-    // change in height in the map) then the point of intersection, the distance and the map tile of the
-    // wall cell is put into the hit list.
-    
-    // experimental function for mouse control
     bool GetMouseSteering(float& fHorPerc, float& fVerPerc) {
         // grab mouse coordinates
         int nMouseX = GetMouseX();
@@ -244,8 +230,8 @@ public:
 
             Clear(RENDER_CEILING ? olc::BLACK : olc::CYAN);
 
-            ray.raycasting(*this, player, cMap, sprite);
-
+            //ray.raycasting(*this, player, cMap, sprite);
+            ray.raycast(*this, player, cMap, sprite);
 
             //sprite.DrawSprites(this, player, map, fElapsedTime);
            // sprite.DrawIcon(this, player, map, fElapsedTime);

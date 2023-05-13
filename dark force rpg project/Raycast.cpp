@@ -399,3 +399,387 @@ olc::Pixel Raycast::ShadePixel_new(const olc::Pixel& org_pix, float fDistance, c
 {
     return PixelLerp(org_pix, shade_pix, std::min(1.0f, fIntensity * fDistance / fMaxDistance));
 }
+
+
+//new
+bool Raycast::GetDistancesToWallsPerLevel(int level, float fRayAngle, std::vector<IntersectInfo>& vHitList, RC_Map& map, Player& player)
+{
+    // counter for nr of hit points found
+    int nHitPointsFound = 0;
+
+    // The player's position is the "from point"
+    float fFromX = player.fPlayerX;
+    float fFromY = player.fPlayerY;
+    // Calculate the "to point" using the player's angle and fMaxDistance
+    //float fToX = player.fPlayerX + fMaxDistance * lu_cos(fRayAngle);
+   // float fToY = player.fPlayerY + fMaxDistance * lu_sin(fRayAngle);
+   float fToX = player.fPlayerX + fMaxDistance * cos(fRayAngle * PI / 180.0f);
+    float fToY = player.fPlayerY + fMaxDistance * sin(fRayAngle * PI / 180.0f);
+    // work out normalized direction vector (fDX, fDY)
+    float fDX = fToX - fFromX;
+    float fDY = fToY - fFromY;
+    float fRayLen = sqrt(fDX * fDX + fDY * fDY);
+    fDX /= fRayLen;
+    fDY /= fRayLen;
+    // calculate the scaling factors for the ray increments per unit in x resp y direction
+    // this calculation takes division by 0.0f into account
+    float fSX = (fDX == 0.0f) ? FLT_MAX : sqrt(1.0f + (fDY / fDX) * (fDY / fDX));
+    float fSY = (fDY == 0.0f) ? FLT_MAX : sqrt(1.0f + (fDX / fDY) * (fDX / fDY));
+    // work out if line is going right or left resp. down or up
+    int nGridStepX = (fDX > 0.0f) ? +1 : -1;
+    int nGridStepY = (fDY > 0.0f) ? +1 : -1;
+
+    // init loop variables
+    float fLengthPartialRayX = 0.0f;
+    float fLengthPartialRayY = 0.0f;
+
+    int nCurX = int(fFromX);
+    int nCurY = int(fFromY);
+
+    // work out the first intersections with the grid
+    if (nGridStepX < 0) { // ray is going left - get scaled difference between start point and left cell border
+        fLengthPartialRayX = (fFromX - float(nCurX)) * fSX;
+    }
+    else {              // ray is going right - get scaled difference between right cell border and start point
+        fLengthPartialRayX = (float(nCurX + 1.0f) - fFromX) * fSX;
+    }
+    if (nGridStepY < 0) { // ray is going up - get scaled difference between start point and top cell border
+        fLengthPartialRayY = (fFromY - float(nCurY)) * fSY;
+    }
+    else {              // ray is going down - get scaled difference between bottom cell border and start point
+        fLengthPartialRayY = (float(nCurY + 1.0f) - fFromY) * fSY;
+    }
+
+    // check whether analysis got out of map boundaries
+    bool bOutOfBounds = !map.IsInBounds(nCurX, nCurY);
+    // did analysis reach the destination cell?
+    bool bDestCellFound = (nCurX == int(fToX) && nCurY == int(fToY));
+
+    float fDistIfFound = 0.0f;  // accumulates distance of analysed piece of ray
+    float fCurHeight = 0.0f;  // to check on differences in height
+
+    while (!bOutOfBounds && !bDestCellFound && fDistIfFound < fMaxDistance) {
+
+        // advance to next map cell, depending on length of partial ray's
+        if (fLengthPartialRayX < fLengthPartialRayY) {
+            // continue analysis in x direction
+            nCurX += nGridStepX;
+            fDistIfFound = fLengthPartialRayX;
+            fLengthPartialRayX += fSX;
+        }
+        else {
+            // continue analysis in y direction
+            nCurY += nGridStepY;
+            fDistIfFound = fLengthPartialRayY;
+            fLengthPartialRayY += fSY;
+        }
+
+        bOutOfBounds = !map.IsInBounds(nCurX, nCurY);
+        if (bOutOfBounds) {
+            bDestCellFound = false;
+
+            // If out of bounds, finalize the list with one additional intersection with the map boundary and height 0.
+            // (only if the list is not empty!) This additional intersection record is necessary for proper rendering at map boundaries.
+            if (fCurHeight != 0.0f && nHitPointsFound > 0) {
+
+                fCurHeight = 0.0f;  // since we're out of bounds
+                // put the collision info in a new IntersectInfo node and push it up the hit list
+                IntersectInfo sInfo;
+                sInfo.fDistFrnt = fDistIfFound;
+                sInfo.fHitX = fFromX + fDistIfFound * fDX;
+                sInfo.fHitY = fFromY + fDistIfFound * fDY;
+                sInfo.nMapCoordX = nCurX;
+                sInfo.nMapCoordY = nCurY;
+                sInfo.fHeight = fCurHeight;
+                sInfo.nLevel = level;
+                vHitList.push_back(sInfo);
+            }
+        }
+        else {
+            // check if there's a difference in height found
+            bool bHitFound = (map.CellHeightAt(nCurX, nCurY, level) != fCurHeight);
+            bDestCellFound = (nCurX == int(fToX) && nCurY == int(fToY));
+
+            if (bHitFound) {
+                nHitPointsFound += 1;
+
+                // reset current height to new value
+                fCurHeight = map.CellHeightAt(nCurX, nCurY, level);
+                // put the collision info in a new IntersectInfo node and push it up the hit list
+                IntersectInfo sInfo;
+                sInfo.fDistFrnt = fDistIfFound;
+                sInfo.fHitX = fFromX + fDistIfFound * fDX;
+                sInfo.fHitY = fFromY + fDistIfFound * fDY;
+                sInfo.nMapCoordX = nCurX;
+                sInfo.nMapCoordY = nCurY;
+                sInfo.fHeight = fCurHeight;
+                sInfo.nLevel = level;
+                vHitList.push_back(sInfo);
+            }
+        }
+    }
+    // return whether any hitpoints were found on this level
+    return (nHitPointsFound > 0);
+}
+
+void Raycast::CalculateWallBottomAndTop2(float fCorrectedDistToWall, int nHorHeight, int nLevelHeight, float fWallHeight, int& nWallTop, int& nWallBottom, Player& player)
+{
+    // calculate slice height for a *unit height* wall
+    int nSliceHeight = int((1.0f / fCorrectedDistToWall) * fDistToProjPlane);
+    nWallTop = nHorHeight - (nSliceHeight * (1.0f - player.fPlayerH)) - (nLevelHeight + fWallHeight - 1.0f) * nSliceHeight;
+    nWallBottom = nWallTop + nSliceHeight * fWallHeight;
+}
+
+void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sprite& sprite)
+{
+    
+    fDistToProjPlane = ((pge.ScreenWidth() / 2.0f) / sin((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f)) * cos((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f);
+    int nHorizonHeight = pge.ScreenHeight() * player.fPlayerH + (int)player.fLookUp;
+    float fAngleStep = player.fPlayerFoV_deg / float(pge.ScreenWidth());
+
+    // iterate over all screen slices, processing the screen in columns
+    for (int x = 0; x < pge.ScreenWidth(); x++) {
+        float fViewAngle = float(x - (pge.ScreenWidth() / 2)) * fAngleStep;
+        float fCurAngle = player.fPlayerA_deg + fViewAngle;
+
+        float fX_hit, fY_hit;        // to hold exact (float) hit location (world space)
+        int   nX_hit, nY_hit;        // to hold coords of tile that was hit (tile space)
+
+        int   nWallTop, nWallTop2;   // to store the top and bottom y coord of the wall per column (screen space)
+        int   nWallBot, nWallBot2;
+
+        // this lambda returns a sample of the ceiling through the pixel at screen coord (px, py)
+        auto get_ceil_sample = [=](int px, int py, float fHeight) -> olc::Pixel {
+            // work out the distance to the location on the ceiling you are looking at through this pixel
+            // (the pixel is given since you know the x and y screen coordinate to draw to)
+            //float fCeilProjDistance = (((1.0f - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            // calculate the world ceiling coordinate from the player's position, the distance and the view angle + player angle
+            //float fCeilProjX = player.fPlayerX + fCeilProjDistance * lu_cos(fCurAngle);
+            //float fCeilProjY = player.fPlayerY + fCeilProjDistance * lu_sin(fCurAngle);
+            float fCeilProjDistance = (((1.0f - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            // calculate the world ceiling coordinate from the player's position, the distance and the view angle + player angle
+            float fCeilProjX = player.fPlayerX + fCeilProjDistance * cos(fCurAngle * PI / 180.0f);
+            float fCeilProjY = player.fPlayerY + fCeilProjDistance * sin(fCurAngle * PI / 180.0f);
+            // calculate the sample coordinates for that world ceiling coordinate, by subtracting the
+            // integer part and only keeping the fractional part. Wrap around if the result < 0
+            float fSampleX = fCeilProjX - int(fCeilProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
+            float fSampleY = fCeilProjY - int(fCeilProjY); if (fSampleY < 0.0f) fSampleY += 1.0f;
+            // having both sample coordinates, get the sample, shade and return it
+            return ShadePixel(wallsprite.sprites[1]->Sample(fSampleX, fSampleY), fCeilProjDistance);
+        };
+
+        // this lambda returns a sample of the floor through the pixel at screen coord (px, py)
+        auto get_floor_sample = [=](int px, int py) -> olc::Pixel {
+            // work out the distance to the location on the floor you are looking at through this pixel
+            // (the pixel is given since you know the x and y to draw to)
+            //float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            // calculate the world floor coordinate from the distance and the view angle + player angle
+            //float fFloorProjX = player.fPlayerX + fFloorProjDistance * lu_cos(fCurAngle);
+            //float fFloorProjY = player.fPlayerY + fFloorProjDistance * lu_sin(fCurAngle);
+            float fFloorProjX = player.fPlayerX + fFloorProjDistance * cos(fCurAngle * PI / 180.0f);
+            float fFloorProjY = player.fPlayerY + fFloorProjDistance * sin(fCurAngle * PI / 180.0f);
+            // calculate the sample coordinates for that world floor coordinate, by subtracting the
+            // integer part and only keeping the fractional part. Wrap around if the result < 0
+            float fSampleX = fFloorProjX - int(fFloorProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
+            float fSampleY = fFloorProjY - int(fFloorProjY); if (fSampleY < 0.0f) fSampleY += 1.0f;
+            // having both sample coordinates, get the sample, shade and return it
+            return ShadePixel(wallsprite.sprites[1]->Sample(fSampleX, fSampleY), fFloorProjDistance);
+        };
+
+        // this lambda returns a sample of the roof through the pixel at screen coord (px, py)
+        auto get_roof_sample = [=](int px, int py, float fHeight) -> olc::Pixel {
+            // work out the distance to the location on the roof you are looking at through this pixel
+            // (the pixel is given since you know the x and y to draw to)
+            //float fRoofProjDistance = (((player.fPlayerH - fHeight) / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            float fRoofProjDistance = (((player.fPlayerH - fHeight) / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            // calculate the world floor coordinate from the distance and the view angle + player angle
+            //float fRoofProjX = player.fPlayerX + fRoofProjDistance * lu_cos(fCurAngle);
+            //float fRoofProjY = player.fPlayerY + fRoofProjDistance * lu_sin(fCurAngle);
+            float fRoofProjX = player.fPlayerX + fRoofProjDistance * cos(fCurAngle * PI / 180.0f);
+            float fRoofProjY = player.fPlayerY + fRoofProjDistance * sin(fCurAngle * PI / 180.0f);
+            // calculate the sample coordinates for that world floor coordinate, by subtracting the
+            // integer part and only keeping the fractional part. Wrap around if the result < 0
+            float fSampleX = fRoofProjX - int(fRoofProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
+            float fSampleY = fRoofProjY - int(fRoofProjY); if (fSampleY < 0.0f) fSampleY += 1.0f;
+            // having both sample coordinates, get the sample, shade and return it
+            return ShadePixel(wallsprite.sprites[1]->Sample(fSampleX, fSampleY), fRoofProjDistance);
+        };
+
+        // prepare the rendering for this slice by calculating the list of intersections in this ray's direction
+        std::vector<IntersectInfo> vHitPointList;
+        float fBlockElevation = 1.0f;
+        int   nBlockLevel = 0;
+        float fFrntDistance = 0.0f;     // distance var also used for wall shading
+        float fBackDistance = 0.0f;
+
+        // for each level, get the list of hitpoints in that level, work out front and back distances and projections
+        // on screen, and add to the global vHitPointList
+        for (int k = 0; k < map.NrOfLayers(); k++) {
+            std::vector<IntersectInfo> vCurLevelList;
+            GetDistancesToWallsPerLevel(k, fCurAngle, vCurLevelList,map,player);
+
+            for (int i = 0; i < (int)vCurLevelList.size(); i++) {
+                // make correction for the fish eye effect
+                //vCurLevelList[i].fDistFrnt *= lu_cos(fViewAngle);
+                vCurLevelList[i].fDistFrnt *= cos(fViewAngle * PI / 180.0f);
+                // calculate values for the on screen projections top_front and top_bottom
+                CalculateWallBottomAndTop2(
+                    vCurLevelList[i].fDistFrnt,
+                    nHorizonHeight,
+                    vCurLevelList[i].nLevel,
+                    vCurLevelList[i].fHeight,
+                    vCurLevelList[i].top_front,
+                    vCurLevelList[i].bot_front,
+                    player
+                );
+            }
+            // Extend the hit list with projected ceiling info for the back of the wall
+            for (int i = 0; i < (int)vCurLevelList.size(); i++) {
+                if (i == (int)vCurLevelList.size() - 1) {
+                    // last element, has no successor
+                    vCurLevelList[i].fDistBack = vCurLevelList[i].fDistFrnt;
+                    vCurLevelList[i].top_back = vCurLevelList[i].top_front;
+                    vCurLevelList[i].bot_back = vCurLevelList[i].bot_front;
+                }
+                else {
+                    // calculate values for the on screen projections top_front and top_bottom
+                    vCurLevelList[i].fDistBack = vCurLevelList[i + 1].fDistFrnt;
+                    CalculateWallBottomAndTop2(
+                        vCurLevelList[i].fDistBack,
+                        nHorizonHeight,
+                        vCurLevelList[i].nLevel,
+                        vCurLevelList[i].fHeight,
+                        vCurLevelList[i].top_back,
+                        vCurLevelList[i].bot_back,
+                        player
+                    );
+                }
+            }
+            // add the hit points for this level list to the combined hit point list
+            vHitPointList.insert(vHitPointList.end(), vCurLevelList.begin(), vCurLevelList.end());
+        }
+
+        // populate ray list for rendering mini map
+        //if (!vHitPointList.empty()) {
+        //    olc::vf2d curHitPoint = { vHitPointList[0].fHitX, vHitPointList[0].fHitY };
+        //    vRayList.push_back(curHitPoint);
+        //}
+
+        // remove all hit points with height 0.0f - they are necessary for calculating the back face projects,
+        // but that part is done now
+        vHitPointList.erase(
+            std::remove_if(
+                vHitPointList.begin(),
+                vHitPointList.end(),
+                [](IntersectInfo& a) {
+                    return a.fHeight == 0.0f;
+                }
+            ),
+            vHitPointList.end()
+                    );
+
+        // sort hit points from far away to close by (painters algorithm)
+        std::sort(
+            vHitPointList.begin(),
+            vHitPointList.end(),
+            [](IntersectInfo& a, IntersectInfo& b) {
+                return (a.fDistFrnt > b.fDistFrnt) ||
+                (a.fDistFrnt == b.fDistFrnt && a.nLevel < b.nLevel);
+            }
+        );
+
+        // render this slice back to front - start with sky and floor
+        for (int y = pge.ScreenHeight() - 1; y >= 0; y--) {
+            // reset depth buffer for this slice
+            sprite.fDepthBuffer[y * pge.ScreenWidth() + x] = fMaxDistance;
+            // draw floor and horizon
+            if (y < nHorizonHeight) {
+                olc::Pixel skySample = olc::CYAN;
+                sprite.DrawDepth(pge,sprite.fMaxDistance, x, y, skySample);
+            }
+            else {
+                olc::Pixel floorSample = get_floor_sample(x, y);   // shading is done in get_floor_sample()
+                sprite.DrawDepth(pge,sprite.fMaxDistance, x, y, floorSample);
+            }
+        }
+
+        for (auto& elt : vHitPointList) {
+
+            IntersectInfo& hitRec = elt;
+            // For the distance calculations we needed also points where the height returns to 0.0f (the
+            // back faces of the block). For the rendering we must skip these "hit points"
+            if (elt.fHeight > 0.0f) {
+                // load the info from next hit point
+                fX_hit = hitRec.fHitX;
+                fY_hit = hitRec.fHitY;
+                nX_hit = hitRec.nMapCoordX;
+                nY_hit = hitRec.nMapCoordY;
+                fBlockElevation = hitRec.fHeight;
+                nBlockLevel = hitRec.nLevel;
+                fFrntDistance = hitRec.fDistFrnt;
+                fBackDistance = hitRec.fDistBack;
+                // make sure the screen y coordinate is within screen boundaries
+                nWallTop = std::clamp(hitRec.top_front, 0, pge.ScreenHeight() - 1);
+                nWallTop2 = std::clamp(hitRec.top_back, 0, pge.ScreenHeight() - 1);
+                nWallBot = std::clamp(hitRec.bot_front, 0, pge.ScreenHeight() - 1);
+                nWallBot2 = std::clamp(hitRec.bot_back, 0, pge.ScreenHeight() - 1);
+
+                // render roof segment if appropriate
+                for (int y = nWallTop2; y < nWallTop; y++) {
+                    olc::Pixel roofSample = get_roof_sample(x, y, float(nBlockLevel) + fBlockElevation);   // shading is done in get_roof_sample()
+                    sprite.DrawDepth(pge,fBackDistance, x, y, roofSample);
+                }
+                // render wall segment - make sure that computational expensive calculations are only done once
+                bool bSampleX_known = false;
+                float fSampleX;
+                for (int y = nWallTop; y <= nWallBot; y++) {
+
+                    if (!bSampleX_known) {
+                        // the x sample coordinate takes more work to figure out. You need to check what side of the
+                        // block was hit
+                        float fBlockMidX = (float)nX_hit + 0.5f;   // location of middle of the cell that was hit
+                        float fBlockMidY = (float)nY_hit + 0.5f;
+                        // determine in what quadrant the hit location is wrt the block mid point
+                        float fTestAngle = atan2f((fY_hit - fBlockMidY), (fX_hit - fBlockMidX));
+
+                        // I tested several supposedly faster approximations for atan2f(), but the results are really not significant
+                        // The major bottleneck here is that this analysis is done for each separate pixel in the slice:
+                        // for now I solved this by caching the drawmode and checking if was a wall previous
+                        // (note that I have to temper with the cached drawmode when multiple wall segments are behind each other)
+
+                        //   * possible improvement 1: determine the ranges within a slice so that you don't have to repeat the atan2f() call for each pixel
+                        //   * possible improvement 2: (after 1) render these slice parts as scaled decals
+
+                        if (-0.75f * PI <= fTestAngle && fTestAngle < -0.25f * PI) fSampleX = fX_hit - (float)nX_hit;  // south side
+                        if (-0.25f * PI <= fTestAngle && fTestAngle < 0.25f * PI) fSampleX = fY_hit - (float)nY_hit;  // east  side
+                        if (0.25f * PI <= fTestAngle && fTestAngle < 0.75f * PI) fSampleX = fX_hit - (float)nX_hit;  // north side
+                        if (-0.75f * PI > fTestAngle || fTestAngle >= 0.75f * PI) fSampleX = fY_hit - (float)nY_hit;  // west  side
+
+                        bSampleX_known = true;
+                    }
+
+                    float fSampleY;
+                    // the y sample coordinate depends only on the pixel y coord on the screen
+                    // in relation to the vertical space the wall is taking up
+                    fSampleY = fBlockElevation * float(y - hitRec.top_front) / float(hitRec.bot_front - hitRec.top_front);
+                    // having both sample coordinates, get the sample, shade it and draw the pixel
+                    olc::Pixel wallSample = ShadePixel(wallsprite.sprites[1]->Sample(fSampleX, fSampleY), fFrntDistance);
+                    sprite.DrawDepth(pge,fFrntDistance, x, y, wallSample);
+                }
+                // render ceiling segment if appropriate
+                for (int y = nWallBot + 1; y <= nWallBot2; y++) {
+                    // render ceiling pixel
+                    olc::Pixel ceilSample = get_ceil_sample(x, y, float(nBlockLevel) + fBlockElevation);   // shading is done in get_ceil_sample()
+                    sprite.DrawDepth(pge,fBackDistance, x, y, ceilSample);
+                }
+            }
+        }
+
+        //if (bTestMode && x == nTestSlice) {
+        //    PrintHitList(vHitPointList, true);
+        //}
+    }
+    
+}
+

@@ -116,6 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,6 +151,7 @@
     <ClInclude Include="RC_Map.h" />
     <ClInclude Include="Saber.h" />
     <ClInclude Include="Sprite.h" />
+    <ClInclude Include="Trig.h" />
     <ClInclude Include="WallSprite.h" />
   </ItemGroup>
   <ItemGroup>

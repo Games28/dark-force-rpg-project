@@ -1,5 +1,67 @@
+#include <cfloat> // Joseph21 - needed for FLT_MAX
+
 #include "Raycast.h"
 
+
+// Joseph21 - changes made here
+
+// ==============================/  convenience functions for angles  /==============================
+
+float deg2rad(float fAngleDeg) { return fAngleDeg * PI / 180.0f; }
+float rad2deg(float fAngleRad) { return fAngleRad / PI * 180.0f; }
+float deg_mod2pi(float fAngleDeg) {
+    while (fAngleDeg < 0.0f) fAngleDeg += 360.0f;
+    while (fAngleDeg >= 360.0f) fAngleDeg -= 360.0f;
+    return fAngleDeg;
+}
+float rad_mod2pi(float fAngleRad) {
+    while (fAngleRad < 0.0f) fAngleRad += 2.0f * PI;
+    while (fAngleRad >= 2.0f * PI) fAngleRad -= 2.0f * PI;
+    return fAngleRad;
+}
+
+// ==============================/  lookup sine and cosine functions  /==============================
+
+float lu_sin_array[360 * SIG_POW10];
+float lu_cos_array[360 * SIG_POW10];
+
+void init_lu_sin_array() {
+    for (int i = 0; i < 360; i++) {
+        for (int j = 0; j < SIG_POW10; j++) {
+            int nIndex = i * SIG_POW10 + j;
+            float fArg_deg = float(nIndex) / float(SIG_POW10);
+            lu_sin_array[nIndex] = sinf(deg2rad(fArg_deg));
+        }
+    }
+}
+
+void init_lu_cos_array() {
+    for (int i = 0; i < 360; i++) {
+        for (int j = 0; j < SIG_POW10; j++) {
+            int nIndex = i * SIG_POW10 + j;
+            float fArg_deg = float(nIndex) / float(SIG_POW10);
+            lu_cos_array[nIndex] = cosf(deg2rad(fArg_deg));
+        }
+    }
+}
+
+float lu_sin(float fDegreeAngle) {
+    fDegreeAngle = deg_mod2pi(fDegreeAngle);
+    int nWholeNr = int(fDegreeAngle);
+    int nRemainder = int((fDegreeAngle - nWholeNr) * float(SIG_POW10));
+    int nIndex = nWholeNr * SIG_POW10 + nRemainder;
+    return lu_sin_array[nIndex];
+}
+
+float lu_cos(float fDegreeAngle) {
+    fDegreeAngle = deg_mod2pi(fDegreeAngle);
+    int nWholeNr = int(fDegreeAngle);
+    int nRemainder = int((fDegreeAngle - nWholeNr) * float(SIG_POW10));
+    int nIndex = nWholeNr * SIG_POW10 + nRemainder;
+    return lu_cos_array[nIndex];
+}
+
+// Joseph21 - end of changes made here
 
 
 bool Raycast::Init(bool& bSuccess, RC_Map& cmap)
@@ -141,17 +203,17 @@ void Raycast::CalculateWallBottomAndTop(float fCorrectedDistToWall, int nHorHeig
 
 void Raycast::raycasting(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sprite& sprite)
 {
-   
+
     fDistToProjPlane = ((pge.ScreenWidth() / 2.0f) / sin((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f)) * cos((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f);
 
     int nHalfScreenWidth = pge.ScreenWidth() / 2;
     int nHorizonHeight = pge.ScreenHeight() * player.fPlayerH + (int)player.fLookUp;
-    float fAngleStep = player.fPlayerFoV_deg / float(pge.ScreenWidth());
+    float fAngleStep_deg = player.fPlayerFoV_deg / float(pge.ScreenWidth());
 
     // iterate over all screen slices, processing the screen in columns
     for (int x = 0; x < pge.ScreenWidth(); x++) {
-        float fViewAngle = float(x - nHalfScreenWidth) * fAngleStep;
-        float fCurAngle = player.fPlayerA_deg + fViewAngle;
+        float fViewAngle_deg = float(x - nHalfScreenWidth) * fAngleStep_deg;
+        float fCurAngle_deg = player.fPlayerA_deg + fViewAngle_deg;
 
         float fX_hit, fY_hit;   // to hold exact (float) hit location
         int   nX_hit, nY_hit;   // to hold coords of tile that was hit
@@ -162,10 +224,10 @@ void Raycast::raycasting(olc::PixelGameEngine& pge, Player& player, RC_Map& map,
         auto get_ceil_sample = [=](int px, int py) -> olc::Pixel {
             // work out the distance to the location on the ceiling you are looking at through this pixel
             // (the pixel is given since you know the x and y screen coordinate to draw to)
-            float fCeilProjDistance = (((1.0f - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            float fCeilProjDistance = (((1.0f - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / cos(fViewAngle_deg * PI / 180.0f);
             // calculate the world ceiling coordinate from the player's position, the distance and the view angle + player angle
-            float fCeilProjX = player.fPlayerX + fCeilProjDistance * cos(fCurAngle * PI / 180.0f);
-            float fCeilProjY = player.fPlayerY + fCeilProjDistance * sin(fCurAngle * PI / 180.0f);
+            float fCeilProjX = player.fPlayerX + fCeilProjDistance * cos(fCurAngle_deg * PI / 180.0f);
+            float fCeilProjY = player.fPlayerY + fCeilProjDistance * sin(fCurAngle_deg * PI / 180.0f);
             // calculate the sample coordinates for that world ceiling coordinate, by subtracting the
             // integer part and only keeping the fractional part. Wrap around if the result < 0
             float fSampleX = fCeilProjX - int(fCeilProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
@@ -178,10 +240,10 @@ void Raycast::raycasting(olc::PixelGameEngine& pge, Player& player, RC_Map& map,
         auto get_floor_sample = [=](int px, int py) -> olc::Pixel {
             // work out the distance to the location on the floor you are looking at through this pixel
             // (the pixel is given since you know the x and y to draw to)
-            float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle_deg * PI / 180.0f);
             // calculate the world floor coordinate from the distance and the view angle + player angle
-            float fFloorProjX = player.fPlayerX + fFloorProjDistance * cos(fCurAngle * PI / 180.0f);
-            float fFloorProjY = player.fPlayerY + fFloorProjDistance * sin(fCurAngle * PI / 180.0f);
+            float fFloorProjX = player.fPlayerX + fFloorProjDistance * cos(fCurAngle_deg * PI / 180.0f);
+            float fFloorProjY = player.fPlayerY + fFloorProjDistance * sin(fCurAngle_deg * PI / 180.0f);
             // calculate the sample coordinates for that world floor coordinate, by subtracting the
             // integer part and only keeping the fractional part. Wrap around if the result < 0
             float fSampleX = fFloorProjX - int(fFloorProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
@@ -194,10 +256,10 @@ void Raycast::raycasting(olc::PixelGameEngine& pge, Player& player, RC_Map& map,
         auto get_roof_sample = [=](int px, int py, float fHeight) -> olc::Pixel {
             // work out the distance to the location on the roof you are looking at through this pixel
             // (the pixel is given since you know the x and y to draw to)
-            float fRoofProjDistance = (((player.fPlayerH - fHeight) / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle * PI / 180.0f);
+            float fRoofProjDistance = (((player.fPlayerH - fHeight) / float(py - nHorizonHeight)) * fDistToProjPlane) / cos(fViewAngle_deg * PI / 180.0f);
             // calculate the world floor coordinate from the distance and the view angle + player angle
-            float fRoofProjX = player.fPlayerX + fRoofProjDistance * cos(fCurAngle * PI / 180.0f);
-            float fRoofProjY = player.fPlayerY + fRoofProjDistance * sin(fCurAngle * PI / 180.0f);
+            float fRoofProjX = player.fPlayerX + fRoofProjDistance * cos(fCurAngle_deg * PI / 180.0f);
+            float fRoofProjY = player.fPlayerY + fRoofProjDistance * sin(fCurAngle_deg * PI / 180.0f);
             // calculate the sample coordinates for that world floor coordinate, by subtracting the
             // integer part and only keeping the fractional part. Wrap around if the result < 0
             float fSampleX = fRoofProjX - int(fRoofProjX); if (fSampleX < 0.0f) fSampleX += 1.0f;
@@ -210,12 +272,12 @@ void Raycast::raycasting(olc::PixelGameEngine& pge, Player& player, RC_Map& map,
         std::vector<IntersectInfo> vColHitlist;
         float fColHeight = 1.0f;
         float fCurDistance = 0.0f;     // distance var needed for wall shading
-        if (GetDistancesToWalls(fCurAngle, vColHitlist,map,player)) {
+        if (GetDistancesToWalls(fCurAngle_deg, vColHitlist,map,player)) {
 
             // at least one wall / block was hit. Extend the hit list with projected bottom / ceiling info
             for (int i = 0; i < (int)vColHitlist.size(); i++) {
                 // make correction for the fish eye effect
-                vColHitlist[i].fDistance *= cos(fViewAngle * PI / 180.0f);
+                vColHitlist[i].fDistance *= cos(fViewAngle_deg * PI / 180.0f);
                 CalculateWallBottomAndTop(vColHitlist[i].fDistance, nHorizonHeight, vColHitlist[i].fHeight, vColHitlist[i].ceil_front, vColHitlist[i].bottom_front,player,pge);
             }
             // Extend the hit list with projected ceiling info for the back of the wall
@@ -529,15 +591,16 @@ void Raycast::CalculateWallBottomAndTop2(float fCorrectedDistToWall, int nHorHei
 
 void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sprite& sprite)
 {
-    
-    fDistToProjPlane = ((pge.ScreenWidth() / 2.0f) / lu_sin((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f)) * lu_cos((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f);
+
+//    fDistToProjPlane = ((pge.ScreenWidth() / 2.0f) / lu_sin((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f)) * lu_cos((player.fPlayerFoV_deg / 2.0f) * PI / 180.0f);
+    fDistToProjPlane = (pge.ScreenWidth() / 2.0f) / lu_sin( player.fPlayerFoV_deg / 2.0f ) * lu_cos( player.fPlayerFoV_deg / 2.0f );
     int nHorizonHeight = pge.ScreenHeight() * player.fPlayerH + (int)player.fLookUp;
-    float fAngleStep = player.fPlayerFoV_deg / float(pge.ScreenWidth());
+    float fAngleStep_deg = player.fPlayerFoV_deg / float(pge.ScreenWidth());
 
     // iterate over all screen slices, processing the screen in columns
     for (int x = 0; x < pge.ScreenWidth(); x++) {
-        float fViewAngle = float(x - (pge.ScreenWidth() / 2)) * fAngleStep;
-        float fCurAngle = player.fPlayerA_deg + fViewAngle;
+        float fViewAngle_deg = float(x - (pge.ScreenWidth() / 2)) * fAngleStep_deg;
+        float fCurAngle_deg = player.fPlayerA_deg + fViewAngle_deg;
 
         float fX_hit, fY_hit;        // to hold exact (float) hit location (world space)
         int   nX_hit, nY_hit;        // to hold coords of tile that was hit (tile space)
@@ -549,8 +612,8 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         // fProjDistance is the distance from the player to the hit point on the surface.
         auto generic_sampling = [=](float fProjDistance, olc::Sprite* cTexturePtr) -> olc::Pixel {
             // calculate the world coordinates from the distance and the view angle + player angle
-            float fProjX = player.fPlayerX + fProjDistance * lu_cos(fCurAngle);
-            float fProjY = player.fPlayerY + fProjDistance * lu_sin(fCurAngle);
+            float fProjX = player.fPlayerX + fProjDistance * lu_cos(fCurAngle_deg);
+            float fProjY = player.fPlayerY + fProjDistance * lu_sin(fCurAngle_deg);
             // calculate the sample coordinates for that world coordinate, by subtracting the
             // integer part and only keeping the fractional part. Wrap around if the result < 0 or > 1
             float fSampleX = fProjX - int(fProjX); if (fSampleX < 0.0f) fSampleX += 1.0f; if (fSampleX >= 1.0f) fSampleX -= 1.0f;
@@ -563,7 +626,7 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         auto get_floor_sample = [=](int px, int py) -> olc::Pixel {
             // work out the distance to the location on the floor you are looking at through this pixel
             // (the pixel is given since you know the x and y to draw to)
-            float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            float fFloorProjDistance = ((player.fPlayerH / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle_deg);
             // call the generic sampler to work out the rest
             return generic_sampling(fFloorProjDistance, wallsprite.sprites[0]);
         };
@@ -573,9 +636,9 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         auto get_roof_sample = [=](int px, int py, int nLevel, float fHeightWithinLevel) -> olc::Pixel {
             // work out the distance to the location on the roof you are looking at through this pixel
             // (the pixel is given since you know the x and y to draw to)
-            float fRoofProjDistance = (((player.fPlayerH - (float(nLevel) + fHeightWithinLevel)) / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            float fRoofProjDistance = (((player.fPlayerH - (float(nLevel) + fHeightWithinLevel)) / float(py - nHorizonHeight)) * fDistToProjPlane) / lu_cos(fViewAngle_deg);
             // call the generic sampler to work out the rest
-            return generic_sampling(fRoofProjDistance, wallsprite.sprites[1]);
+            return generic_sampling(fRoofProjDistance, wallsprite.sprites[3]);
         };
 
         // this lambda returns a sample of the ceiling through the pixel at screen coord (px, py)
@@ -583,9 +646,9 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         auto get_ceil_sample = [=](int px, int py, int nLevel, float fHeightWithinLevel) -> olc::Pixel {
             // work out the distance to the location on the ceiling you are looking at through this pixel
             // (the pixel is given since you know the x and y screen coordinate to draw to)
-            float fCeilProjDistance = (((float(nLevel) - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / lu_cos(fViewAngle);
+            float fCeilProjDistance = (((float(nLevel) - player.fPlayerH) / float(nHorizonHeight - py)) * fDistToProjPlane) / lu_cos(fViewAngle_deg);
             // call the generic sampler to work out the rest
-            return generic_sampling(fCeilProjDistance, wallsprite.sprites[1]);
+            return generic_sampling(fCeilProjDistance, wallsprite.sprites[2]);
         };
 
         // prepare the rendering for this slice by calculating the list of intersections in this ray's direction
@@ -595,11 +658,11 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         for (int k = 0; k < map.NrOfLayers(); k++) {
 
             std::vector<IntersectInfo> vCurLevelList;
-            GetDistancesToWallsPerLevel(k, fCurAngle, vCurLevelList,map, player);
+            GetDistancesToWallsPerLevel(k, fCurAngle_deg, vCurLevelList,map, player);
 
             for (int i = 0; i < (int)vCurLevelList.size(); i++) {
                 // make correction for the fish eye effect
-                vCurLevelList[i].fDistFrnt *= lu_cos(fViewAngle);
+                vCurLevelList[i].fDistFrnt *= lu_cos(fViewAngle_deg);
                 // calculate values for the on screen projections top_front and top_bottom
                 CalculateWallBottomAndTop2(
                     vCurLevelList[i].fDistFrnt,
@@ -761,6 +824,6 @@ void Raycast::raycast(olc::PixelGameEngine& pge, Player& player, RC_Map& map, Sp
         //    PrintHitList(vHitPointList, true);
         //}
     }
-    
+
 }
 

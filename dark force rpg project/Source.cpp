@@ -39,7 +39,7 @@ public:
     bool bMouseControl = MOUSE_CONTROL;
     GameState gamestate = GameState::GAME;
     RC_Map cMap;
-    
+    bool resetAniamtion = false;
     // max visible distance - use length of map diagonal to overlook whole map
     int nMapX = 32;
     int nMapY = 32;
@@ -49,8 +49,12 @@ public:
     float afterRotate = 0.0f;
     olc::vf2d playerbefore = { 0.0f, 0.0f };
     olc::vf2d playerafter = { 0.0f, 0.0f };
+    int saberinner = 0;
+    int saberouter = 0;
+    int saberanimation = 0;
+    int selectedAnimation = 0;
     // player: position and looking angle
-   
+
             // constant distance to projection plane - is calculated in OnUserCreate()
 
     olc::Sprite* pWallSprite = nullptr;    // these pointers are populated in OnUserCreate()
@@ -69,29 +73,29 @@ public:
 
     bool OnUserCreate() override {
         bool bSuccess = true;
-        
-        ray.init_lu_sin_array();
-        ray.init_lu_cos_array();
-           
+
+        init_lu_sin_array();
+        init_lu_cos_array();
+
         cMap.InitMap(16, 16);
         cMap.AddLayer(sMap_level0);
         cMap.AddLayer(sMap_level1);
        cMap.AddLayer(sMap_level2);
         cMap.AddLayer(sMap_level3);
         fMaxDistance = cMap.DiagonalLength();
-            
+
             ray.Init(bSuccess,cMap);
             sprite.initSprites(ScreenWidth(),ScreenHeight());
-            saber.initSaber();
-        
+            saber.initSaber(bSuccess);
+
             menu.InitMenu(*this);
             power.initsprite();
-        
-        
+
+
         return bSuccess;
     }
 
-   
+
     bool GetMouseSteering(float& fHorPerc, float& fVerPerc) {
         // grab mouse coordinates
         int nMouseX = GetMouseX();
@@ -115,7 +119,7 @@ public:
     }
 
     // Shade the pixel p using fDistance as a factor in the shade formula
-   
+
     bool OnUserUpdate(float fElapsedTime) override {
 
         // gamestate controls
@@ -155,7 +159,7 @@ public:
                 player.fPlayerX = fNewX;
                 player.fPlayerY = fNewY;
             }
-            
+
             // for looking up/down or crouching/flying you can speed up by keeping SHIFT pressed
             float fSpeedUp = GetKey(olc::SHIFT).bHeld ? 4.0f : 1.0f;
             // looking up or down - collision detection not necessary
@@ -210,8 +214,8 @@ public:
                 }
             }
             //telekinesis toggle
-            
-            
+
+
 
 
             playerafter = { player.fPlayerX, player.fPlayerY };
@@ -236,17 +240,52 @@ public:
             //sprite.DrawSprites(this, player, map, fElapsedTime);
            // sprite.DrawIcon(this, player, map, fElapsedTime);
 
-            saber.DrawSaber(this);
-          
-         
+            
+           
+            if (resetAniamtion != true)
+            {
+                //left angle attack
+                if (GetKey(olc::J).bPressed) { resetAniamtion = true;  selectedAnimation = 0; }
+                //right angle attack
+                if (GetKey(olc::L).bPressed) { resetAniamtion = true;  selectedAnimation = 1; }
+            }
+
+            if (resetAniamtion != false)
+            {
+                switch (selectedAnimation)
+                {
+                case 0:
+                    saber.DrawSaberAnimation(this, resetAniamtion, 0, 1, 0, fElapsedTime);
+                    break;
+                    
+                case 1:
+                    saber.DrawSaberAnimation(this, resetAniamtion, 1, 3, 2, fElapsedTime);
+                    break;
+
+                case 3:
+                    saber.DrawSaberAnimation(this, resetAniamtion, saberanimation, saberinner, saberouter, fElapsedTime);
+                    break;
+
+                case 4:
+                    saber.DrawSaberAnimation(this, resetAniamtion, saberanimation, saberinner, saberouter, fElapsedTime);
+                    break;
+                }
+                
+            }
+            else
+            {
+                saber.DrawSaber(this);
+            }
+
+
 
             //object selection
-            
+
             float fObjPlyA;
             for (int i = 0; i < (sprite.listObjects.size() / 2); i++)
             {
                 int objlist = sprite.listObjects.size() / 2 + i;
-            
+
                 Object& obj = sprite.listObjects[objlist];
                 Object& icon = sprite.listObjects[i];
                 if (!GetKey(olc::SPACE).bHeld)
@@ -257,11 +296,11 @@ public:
                         sprite.Drawtest(this, icon, player, cMap, fElapsedTime);
                     }
                 }
-                
-               
-                   
-                    
-                    
+
+
+
+
+
                     if (GetKey(olc::SPACE).bHeld && obj.ishit)
                     {
                         obj.pickedup = true;
@@ -273,16 +312,16 @@ public:
                         power.tkMove(icon, playerbefore, playerafter);
                         power.tkRotation(*this, icon, player, beforeRotate, afterRotate, -1);
                     }
-                
-               
+
+
                 if (GetKey(olc::SPACE).bReleased) obj.pickedup = false;
                 sprite.Drawtest(this,obj,player,cMap,fElapsedTime);
-                
-                
-            }
-            
 
-            
+
+            }
+
+
+
 
                 if (GetKey(olc::SPACE).bReleased) isHit = false;
 

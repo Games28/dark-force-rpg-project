@@ -17,7 +17,8 @@ bool WallSprites::init(bool& bSuccess)
     //wallsprite
     sprites[0] = load_sprite_file("stonewall.png"); bSuccess &= (sprites[0] != nullptr);
     //floor
-    sprites[1] = load_sprite_file("sand1.png"); bSuccess &= (sprites[1] != nullptr);
+//    sprites[1] = load_sprite_file("sand1.png"); bSuccess &= (sprites[1] != nullptr);
+    sprites[1] = load_sprite_file("sand1.png"); bSuccess &= (sprites[1] != nullptr);    // Joseph21 - made texture bouindaries explicit
     //ceiling
     sprites[2] = load_sprite_file("sand.png"); bSuccess &= (sprites[2] != nullptr);
     //roof

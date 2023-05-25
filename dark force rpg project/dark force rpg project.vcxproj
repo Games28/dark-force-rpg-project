@@ -140,6 +140,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Animation.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="Map.h" />
     <ClInclude Include="MapLayout.h" />
@@ -150,7 +151,6 @@
     <ClInclude Include="Raycast.h" />
     <ClInclude Include="RC_Map.h" />
     <ClInclude Include="Saber.h" />
-    <ClInclude Include="Sprite.h" />
     <ClInclude Include="Trig.h" />
     <ClInclude Include="WallSprite.h" />
   </ItemGroup>

@@ -1,6 +1,15 @@
 #include "Saber.h"
 
-void Saber::initSaber()
+
+
+
+
+
+
+
+
+
+bool Saber::initSaber(bool success)
 {
 	sprites[0] = new olc::Sprite("layeredduallightsaberinner.png");
 	sprites[1] = new olc::Sprite("layeredduallightsaberouter1.png");
@@ -14,7 +23,18 @@ void Saber::initSaber()
 	decals[3] = new olc::Decal(sprites[3]);
 	decals[4] = new olc::Decal(sprites[4]);
 
-	
+	SsaberAnimation[0] = new olc::Sprite("leftangleswingSheet.png");
+	SsaberAnimation[1] = new olc::Sprite("leftangleswingSheetglow.png");
+	SsaberAnimation[2] = new olc::Sprite("rightangleswingSheet.png");
+	SsaberAnimation[3] = new olc::Sprite("rightangleswingSheetglow.png");
+
+	DsaberAnimation[0] = new olc::Decal(SsaberAnimation[0]);
+	DsaberAnimation[1] = new olc::Decal(SsaberAnimation[1]);
+	DsaberAnimation[2] = new olc::Decal(SsaberAnimation[2]);
+	DsaberAnimation[3] = new olc::Decal(SsaberAnimation[3]);
+	Anime[0].SetParams(0.125f,SsaberAnimation[0]->width,SsaberAnimation[0]->height,6,1,6,85,true,true);
+	Anime[1].SetParams(0.125f, SsaberAnimation[0]->width, SsaberAnimation[0]->height, 6, 1, 6, 85, false, true);
+ 	return true;
 }
 
 void Saber::DrawSaber(olc::PixelGameEngine* gfx)
@@ -54,22 +74,7 @@ void Saber::DrawSaber(olc::PixelGameEngine* gfx)
 		p = olc::MAGENTA;
 	}
 
-	if (gfx->GetKey(olc::I).bHeld)
-	{
-		Pos.y -= 1;
-	}
-	if (gfx->GetKey(olc::K).bHeld)
-	{
-		Pos.y += 1;
-	}
-	if (gfx->GetKey(olc::J).bHeld)
-	{
-		Pos.x -= 1;
-	}
-	if (gfx->GetKey(olc::L).bHeld)
-	{
-		Pos.x += 1;
-	}
+	
 
 	olc::vf2d size{ 0.40f,0.40f };
 	gfx->SetDecalMode(olc::DecalMode::NORMAL);
@@ -91,5 +96,24 @@ void Saber::DrawSaber(olc::PixelGameEngine* gfx)
 		gfx->DrawDecal({ Pos.x,Pos.y }, decals[4], size, p);
 		break;
 	}
+
+}
+
+void Saber::DrawSaberAnimation(olc::PixelGameEngine* gfx, bool & reset,int animation, int inner, int outer, float fElapsedTime)
+{
+	
+	
+	bool movement = true;
+	bool invert = true;
+	//AnimationData saberglow = Anime[0].GetInfo(fElapsedTime, Positon.x, reset);
+	AnimationData saber = Anime[animation].GetInfo(fElapsedTime, xoffset, reset);
+	olc::vf2d size = { 80.0f, 300.0f };
+	gfx->SetDecalMode(olc::DecalMode::ADDITIVE);
+	gfx->DrawPartialDecal({ Positon.x + xoffset, Positon.y }, size, DsaberAnimation[outer], saber.sourcePos, saber.sourceSize, p);
+	gfx->SetDecalMode(olc::DecalMode::NORMAL);
+	gfx->DrawPartialDecal({ Positon.x + xoffset, Positon.y }, size, DsaberAnimation[inner], saber.sourcePos, saber.sourceSize);
+	
+	
+
 
 }

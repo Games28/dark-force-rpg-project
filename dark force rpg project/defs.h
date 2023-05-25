@@ -19,7 +19,7 @@
 
 // shading constants
 #define RENDER_SHADED        true
-#define OBJECT_INTENSITY       0.5f
+#define OBJECT_INTENSITY       4.5f        // Joseph21 - changed from org value 0.5f
 #define MULTIPLIER_INTENSITY   5.0f
 #define INTENSITY_SPEED        1.0f
 
